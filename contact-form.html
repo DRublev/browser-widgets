@@ -1,0 +1,387 @@
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Пошаговая форма</title>
+
+    <style>
+        :root {
+            --color-1: #a26bec;
+            --color-1-hover: #704ba1;
+            --color-2: #2db67b;
+            --color-2-hover: #269263;
+
+            --text-color: #5c96a5;
+            --text-placeholder-color: #cbd5e1;
+
+            --steps-bg-color: #f8fafc;
+
+            --invalid-color: #ca162d;
+        }
+
+        body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            margin: 0;
+
+            background: linear-gradient(135deg, rgb(236, 123, 125), rgb(192, 140, 233));
+            background-size: cover;
+        }
+
+        .form {
+            background: white;
+            border-radius: 10px;
+            width: 20vw;
+            padding: 20px;
+            margin: 5rem auto;
+        }
+
+        .steps {
+            display: flex;
+            justify-content: start;
+            align-items: center;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        .steps span {
+            appearance: none;
+            background-color: var(--steps-bg-color);
+            border: none;
+            border-radius: 50%;
+            width: 2rem;
+            height: 2rem;
+            margin-right: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .steps span[data-active] {
+            color: white;
+            background-color: var(--color-1);
+        }
+
+        label {
+            font-size: 1.2rem;
+            font-family: Arial, Helvetica, sans-serif;
+            color: var(--text-color);
+        }
+
+        .input {
+            width: 100%;
+            height: 40px;
+            border: 1px solid #ddd;
+            border-radius: 0.5rem;
+            padding: 0.4rem 0.7rem;
+            margin: 0.3rem 0 0.6rem 0;
+            box-sizing: border-box;
+            color: var(--text-color);
+            transition: ease-in-out 0.3s all;
+            border-color: none;
+        }
+
+        .input:focus {
+            outline: none;
+            border-color: var(--color-1);
+        }
+
+        .input::placeholder {
+            color: var(--text-placeholder-color);
+        }
+
+        textarea.input {
+            resize: none;
+            height: 80px;
+        }
+
+        .input:user-invalid {
+            border-color: var(--invalid-color);
+        }
+
+        .validation-message {
+            color: var(--invalid-color);
+            margin: 0;
+        }
+
+        .validation-message:not(:empty) {
+            margin-bottom: .6rem;
+        }
+
+        .btn {
+            cursor: pointer;
+            border: 0;
+            border-radius: 25px;
+            padding: 0.8rem;
+            transition: ease-in-out 0.3s all;
+        }
+
+        .btn[disabled] {
+            opacity: 0.5;
+            cursor: auto;
+        }
+
+        #prev-step-btn {
+            color: var(--color-2-hover);
+            background: transparent;
+            border: 1px solid var(--color-2);
+        }
+
+        #prev-step-btn:hover {
+            color: var(--color-2-hover);
+            border: 1px solid var(--color-2-hover);
+        }
+
+        #prev-step-btn {
+            color: var(--color-2-hover);
+            background: transparent;
+            border: 1px solid var(--color-2);
+        }
+
+        #prev-step-btn:hover {
+            color: var(--color-2-hover);
+            border: 1px solid var(--color-2-hover);
+        }
+
+        #next-step-btn,
+        #submit-form-btn {
+            color: white;
+            background: var(--color-1);
+            border: 1px solid var(--color-1);
+        }
+
+        #next-step-btn:hover,
+        #submit-form-btn:hover {
+            background: var(--color-1-hover);
+            border: 1px solid var(--color-1-hover);
+        }
+
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 0.8rem;
+        }
+
+        .navigation .btn {
+            flex-grow: 1;
+        }
+
+        .navigation .btn:only-child {
+            margin: 0;
+        }
+
+        .navigation .btn:first-child {
+            margin-right: .8rem;
+        }
+
+        .navigation #submit-form-btn {
+            flex-grow: 3;
+        }
+    </style>
+
+    <script>
+        let prevBtn;
+        let nextBtn;
+        let submitBtn;
+
+        let currentStep = 1;
+
+        let inputsInStep = -1;
+        let validInput = 0;
+
+        function showStep() {
+            const steps = document.querySelectorAll('.form-step');
+            steps.forEach((step, idx) => {
+                if (idx + 1 === currentStep) {
+                    step.style.display = 'block';
+                } else {
+                    step.style.display = 'none';
+                }
+            });
+
+            if (currentStep === steps.length) {
+                nextBtn.style.display = 'none';
+                submitBtn.style.display = 'block';
+            } else {
+                nextBtn.style.display = 'block';
+                submitBtn.style.display = 'none';
+            }
+
+            if (currentStep > 1) {
+                prevBtn.style.display = 'block';
+            } else {
+                prevBtn.style.display = 'none';
+            }
+
+            setButtonEnabled();
+        }
+
+        function prevStep() {
+            unsubscribeInputsChange();
+
+            currentStep--;
+            showStep();
+
+            subscribeInputsChange();
+            updateStepsIndicators(1);
+        }
+
+        function nextStep() {
+            if (!validateStep()) return;
+            unsubscribeInputsChange();
+
+            currentStep++;
+            showStep();
+
+            subscribeInputsChange();
+            updateStepsIndicators(-1);
+        }
+
+        function updateStepsIndicators(diff) {
+            const currentIndicator = document.querySelector(`#step-${currentStep}`);
+            const prevIndicator = document.querySelector(`#step-${currentStep + diff}`);
+
+            if (prevIndicator) {
+                prevIndicator.removeAttribute('data-active');
+            }
+            if (currentIndicator) {
+                currentIndicator.setAttribute('data-active', '');
+            }
+        }
+
+        function validateStep() {
+            const inputs = document.querySelectorAll(`.form#form-step-${currentStep} .input`);
+            let isValid = true;
+
+            for (const input of inputs) {
+                isValid = validateInput(input) && isValid;
+            }
+
+            return isValid;
+        }
+
+        function validateInput(input) {
+            const errorTextContainer = document.querySelector(`p#${input.getAttribute('name')}-error`);
+            let isInputValid = true;
+
+            if (!input.checkValidity()) {
+                isInputValid = false;
+                errorTextContainer.innerHTML = input.validationMessage;
+            } else {
+                errorTextContainer.innerHTML = '';
+            }
+
+            return isInputValid;
+        }
+
+        function onInputChange(e) {
+            if (validateInput(e.target)) {
+                validInput++;
+            }
+            setButtonEnabled();
+        }
+
+        function subscribeInputsChange() {
+            const inputs = document.querySelectorAll(`.form-step#form-step-${currentStep} .input`);
+
+            inputsInStep = inputs.length;
+            validInput = 0;
+
+            inputs.forEach((input) => {
+                input.addEventListener('change', onInputChange);
+            })
+        }
+
+        function unsubscribeInputsChange() {
+            const inputs = document.querySelectorAll(`.form-step#form-step-${currentStep} .input`);
+            inputs.forEach((input) => {
+                input.removeEventListener('change', onInputChange);
+            })
+        }
+
+        function setButtonEnabled() {
+            const shouldBeEnabled = inputsInStep === validInput;
+            const btn = submitBtn.style.display != 'none' ? submitBtn : nextBtn;
+
+            if (shouldBeEnabled) {
+                btn.removeAttribute('disabled');
+            } else {
+                btn.setAttribute('disabled', 1);
+            }
+        }
+
+        function sendForm(e) {
+            e.preventDefault();
+
+            const form = e.currentTarget;
+            const data = new FormData(form);
+
+            fetch('http://localhost:3002/', {
+                method: 'POST',
+                body: data,
+            })
+            .then(res => res.json())
+            .then(console.log)
+            .catch((e) => {
+                form.reset();
+            });
+        } 
+
+        window.addEventListener('load', () => {
+            const form = document.forms.namedItem('contact-form');
+            form.addEventListener('submit', sendForm);
+
+            prevBtn = document.getElementById('prev-step-btn');
+            nextBtn = document.getElementById('next-step-btn');
+            submitBtn = document.getElementById('submit-form-btn');
+
+            subscribeInputsChange();
+            showStep();
+        })
+    </script>
+</head>
+
+<body>
+    <form action="" name="contact-form" class="form">
+        <div class="steps">
+            <span id="step-1" data-active>1</span>
+            <span id="step-2">2</span>
+            <span id="step-3">3</span>
+        </div>
+
+        <div id="form-step-1" class="form-step">
+            <label fom="name">Имя</label>
+            <input type="text" class="input" name="name" placeholder="Иванов Иван" required />
+            <p id="name-error" class="validation-message"></p>
+            <br />
+            <label for="email">Email</label>
+            <input type="email" class="input" name="email" placeholder="ivanov@example.com" required />
+            <p id="email-error" class="validation-message"></p>
+        </div>
+        <div id="form-step-2" class="form-step">
+            <label for="phone">Номер телефона</label>
+            <input type="tel" class="input" name="phone" placeholder="+7 (987)-654-1212" required />
+            <p id="phone-error" class="validation-message"></p>
+            <br />
+            <label for="address">Домашний адрес</label>
+            <textarea class="input" name="address" rows="4" placeholder="г. Москва, ул. Ленина, 1" required></textarea>
+            <p id="address-error" class="validation-message"></p>
+        </div>
+        <div id="form-step-3" class="form-step">
+            <label for="cv">Выберите резюме</label>
+            <input type="file" class="input" name="cv" required />
+            <p id="cv-error" class="validation-message"></p>
+        </div>
+
+        <div class="navigation">
+            <button type="button" id="prev-step-btn" class="btn" onclick="prevStep()">Назад</button>
+            <button type="button" id="next-step-btn" class="btn" onclick="nextStep()">Далее</button>
+            <button type="submit" id="submit-form-btn" class="btn">Отправить</button>
+        </div>
+    </form>
+</body>
+
+</html>
